@@ -1,6 +1,6 @@
 from flask import Flask
 from models import db
-from server.config import Config
+from server.config import Config  # Changed this line
 from flask_migrate import Migrate
 
 # Import route registration functions
