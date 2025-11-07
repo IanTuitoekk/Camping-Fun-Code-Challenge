@@ -1,57 +1,56 @@
-from flask import request, jsonify
+from models.camper import Camper, CamperType
 from models import db
-from models.camper import Camper
 
-def register_camper_routes(app):
-    
-    @app.route('/campers', methods=['GET'])
-    def get_campers():
-        """Get all campers without signups"""
-        campers = Camper.query.all()
-        return jsonify([camper.to_dict() for camper in campers]), 200
+def get_all_campers() -> list[CamperType]:
+    campers = Camper.query.all()  # SELECT * FROM campers
+    return [CamperType(id=c.id, name=c.name, age=c.age) for c in campers]
 
-    @app.route('/campers/<int:id>', methods=['GET'])
-    def get_camper(id):
-        """Get a single camper with signups"""
-        camper = Camper.query.get(id)
-        if not camper:
-            return jsonify({"error": "Camper not found"}), 404
-        return jsonify(camper.to_dict(include_signups=True)), 200
+def get_camper_by_id(camper_id: int) -> dict | None:
+    camper = Camper.query.get(camper_id)  # SELECT * FROM campers WHERE id = camper_id
+    if camper:
+        # Return camper with signups (each signup nests activity)
+        return {
+            'id': camper.id,
+            'name': camper.name,
+            'age': camper.age,
+            'signups': [
+                {
+                    'id': signup.id,
+                    'camper_id': signup.camper_id,
+                    'activity_id': signup.activity_id,
+                    'time': signup.time,
+                    'activity': {
+                        'id': signup.activity.id,
+                        'name': signup.activity.name,
+                        'difficulty': signup.activity.difficulty
+                    }
+                }
+                for signup in camper.signups
+            ]
+        }
+    return None
 
-    @app.route('/campers', methods=['POST'])
-    def create_camper():
-        """Create a new camper"""
-        data = request.get_json()
-        
+def create_camper(name: str, age: int) -> CamperType | dict:
+    try:
+        new_camper = Camper(name=name, age=age)
+        db.session.add(new_camper)  # INSERT INTO campers (name, age) VALUES (...)
+        db.session.commit()
+        return CamperType(id=new_camper.id, name=new_camper.name, age=new_camper.age)
+    except ValueError as e:
+        db.session.rollback()
+        return {"errors": [str(e)]}
+
+def update_camper(camper_id: int, name: str | None = None, age: int | None = None) -> CamperType | dict | None:
+    camper = Camper.query.get(camper_id)
+    if camper:
         try:
-            camper = Camper(
-                name=data.get('name'),
-                age=data.get('age')
-            )
-            db.session.add(camper)
-            db.session.commit()
-            return jsonify(camper.to_dict()), 201
+            if name is not None:
+                camper.name = name
+            if age is not None:
+                camper.age = age
+            db.session.commit()  # UPDATE campers SET ... WHERE id = camper_id
+            return CamperType(id=camper.id, name=camper.name, age=camper.age)
         except ValueError as e:
             db.session.rollback()
-            return jsonify({"errors": [str(e)]}), 400
-
-    @app.route('/campers/<int:id>', methods=['PATCH'])
-    def update_camper(id):
-        """Update a camper's name and/or age"""
-        camper = Camper.query.get(id)
-        if not camper:
-            return jsonify({"error": "Camper not found"}), 404
-        
-        data = request.get_json()
-        
-        try:
-            if 'name' in data:
-                camper.name = data['name']
-            if 'age' in data:
-                camper.age = data['age']
-            
-            db.session.commit()
-            return jsonify(camper.to_dict()), 202
-        except ValueError as e:
-            db.session.rollback()
-            return jsonify({"errors": [str(e)]}), 400
+            return {"errors": [str(e)]}
+    return None

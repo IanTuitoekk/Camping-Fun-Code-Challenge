@@ -1,5 +1,14 @@
 from models import db
+from dataclasses import dataclass
 from sqlalchemy.orm import validates
+
+# a type to represent the signup data
+@dataclass
+class SignupType:
+    id: int
+    camper_id: int
+    activity_id: int
+    time: int
 
 class Signup(db.Model):
     __tablename__ = 'signups'
@@ -13,21 +22,13 @@ class Signup(db.Model):
     camper = db.relationship('Camper', back_populates='signups')
     activity = db.relationship('Activity', back_populates='signups')
     
+    def __init__(self, camper_id, activity_id, time):
+        self.camper_id = camper_id
+        self.activity_id = activity_id
+        self.time = time
+    
     @validates('time')
     def validate_time(self, key, time):
         if not isinstance(time, int) or time < 0 or time > 23:
             raise ValueError("Time must be between 0 and 23")
         return time
-    
-    def to_dict(self):
-        return {
-            'id': self.id,
-            'camper_id': self.camper_id,
-            'activity_id': self.activity_id,
-            'time': self.time,
-            'activity': self.activity.to_dict(),
-            'camper': self.camper.to_dict()
-        }
-    
-    def __repr__(self):
-        return f'<Signup {self.id}: Camper {self.camper_id} -> Activity {self.activity_id} at {self.time}:00>'

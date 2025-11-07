@@ -1,4 +1,12 @@
 from models import db
+from dataclasses import dataclass
+
+# a type to represent the activity data
+@dataclass
+class ActivityType:
+    id: int
+    name: str
+    difficulty: int
 
 class Activity(db.Model):
     __tablename__ = 'activities'
@@ -10,12 +18,6 @@ class Activity(db.Model):
     # Relationship to signups with cascade delete
     signups = db.relationship('Signup', back_populates='activity', cascade='all, delete-orphan')
     
-    def to_dict(self):
-        return {
-            'id': self.id,
-            'name': self.name,
-            'difficulty': self.difficulty
-        }
-    
-    def __repr__(self):
-        return f'<Activity {self.id}: {self.name}, Difficulty {self.difficulty}>'
+    def __init__(self, name, difficulty):
+        self.name = name
+        self.difficulty = difficulty

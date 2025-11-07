@@ -1,5 +1,13 @@
 from models import db
+from dataclasses import dataclass
 from sqlalchemy.orm import validates
+
+# a type to represent the camper data
+@dataclass
+class CamperType:
+    id: int
+    name: str
+    age: int
 
 class Camper(db.Model):
     __tablename__ = 'campers'
@@ -10,6 +18,10 @@ class Camper(db.Model):
     
     # Relationship to signups
     signups = db.relationship('Signup', back_populates='camper', cascade='all, delete-orphan')
+    
+    def __init__(self, name, age):
+        self.name = name
+        self.age = age
     
     @validates('name')
     def validate_name(self, key, name):
@@ -22,16 +34,3 @@ class Camper(db.Model):
         if not isinstance(age, int) or age < 8 or age > 18:
             raise ValueError("Age must be between 8 and 18")
         return age
-    
-    def to_dict(self, include_signups=False):
-        data = {
-            'id': self.id,
-            'name': self.name,
-            'age': self.age
-        }
-        if include_signups:
-            data['signups'] = [signup.to_dict() for signup in self.signups]
-        return data
-    
-    def __repr__(self):
-        return f'<Camper {self.id}: {self.name}, Age {self.age}>'

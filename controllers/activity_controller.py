@@ -1,22 +1,14 @@
-from flask import jsonify
+from models.activity import Activity, ActivityType
 from models import db
-from models.activity import Activity
 
-def register_activity_routes(app):
-    
-    @app.route('/activities', methods=['GET'])
-    def get_activities():
-        """Get all activities"""
-        activities = Activity.query.all()
-        return jsonify([activity.to_dict() for activity in activities]), 200
+def get_all_activities() -> list[ActivityType]:
+    activities = Activity.query.all()  # SELECT * FROM activities
+    return [ActivityType(id=a.id, name=a.name, difficulty=a.difficulty) for a in activities]
 
-    @app.route('/activities/<int:id>', methods=['DELETE'])
-    def delete_activity(id):
-        """Delete an activity and cascade delete its signups"""
-        activity = Activity.query.get(id)
-        if not activity:
-            return jsonify({"error": "Activity not found"}), 404
-        
-        db.session.delete(activity)
+def delete_activity(activity_id: int) -> bool:
+    activity = Activity.query.get(activity_id)
+    if activity:
+        db.session.delete(activity)  # DELETE FROM activities WHERE id = activity_id (cascade deletes signups)
         db.session.commit()
-        return '', 204
+        return True
+    return False
